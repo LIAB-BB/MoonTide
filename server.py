@@ -56,6 +56,9 @@ ADVICE_PROMPT = """你是「月汐」的空间行动编辑。根据用户设备�
 5. 每次根据 variation_id 换一个观察角度和表达顺序，但不能改变事实。
 6. 语气像一位冷静、敏锐的空间编辑：直接、温和，不使用 emoji、星号、玄学术语或营销口号。
 7. summary 用一句话说明最值得先处理的空间关系；basis 只列实际使用过的输入依据。
+8. tide 是可选的“旧金山潮汐节奏”参考，不是用户所在地、科学因果或命运依据。即使使用它，也最多影响一条行动的推进或收尾节奏。
+9. 涨潮中可用于聚拢、开始或推进；落潮中可用于减少、结束或休息。临近高低潮时优先缩小动作范围，不要制造紧迫感。
+10. 如果使用 tide，必须在文字或 basis 中明确写“旧金山潮汐节奏”；没有 tide 时不要补造潮汐信息。
 """
 
 
@@ -180,6 +183,23 @@ def sanitize_payload(payload: Any) -> dict[str, Any]:
         if bounded_text(item, 100)
     ]
     clean["variation_id"] = bounded_text(payload.get("variationId"), 32)
+    raw_tide = payload.get("tide")
+    clean["tide"] = None
+    if isinstance(raw_tide, dict):
+        motion = bounded_text(raw_tide.get("motion"), 8)
+        next_event = bounded_text(raw_tide.get("nextEvent"), 8)
+        try:
+            minutes_to_next = max(0, min(1_440, int(raw_tide.get("minutesToNext"))))
+        except (TypeError, ValueError):
+            minutes_to_next = None
+        if motion in {"涨潮中", "落潮中"} and next_event in {"高潮", "低潮"} and minutes_to_next is not None:
+            clean["tide"] = {
+                "station": "旧金山",
+                "motion": motion,
+                "next_event": next_event,
+                "minutes_to_next": minutes_to_next,
+                "role": "叙事节奏参考，不代表用户所在地",
+            }
     return clean
 
 

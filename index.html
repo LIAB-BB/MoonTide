@@ -379,12 +379,14 @@
     };
     const brief = text => text.match(/^.*?[。！？]/)?.[0] || text;
     const positionCopy = (card,role) => { const reading=readingFor(card); if(role==="隐藏阻力") return `阻力 · ${brief(reading.signal)}`; if(role==="下一步行动") return `行动 · ${brief(reading.action)}`; return `提示 · ${brief(reading.signal)}`; };
+    const tideFacts = () => { if(!state.tide?.next)return null;return {station:"旧金山",motion:state.tide.motion,nextEvent:state.tide.next.type==="H"?"高潮":"低潮",minutesToNext:Math.max(0,Math.round((state.tide.next.at-Date.now())/60000))}; };
+    const tidePaceAdvice = action => { const tide=tideFacts();if(!tide)return action;const near=tide.minutesToNext<=90,pace=tide.motion==="涨潮中"?(near?"临近高潮，只推进一个重点":"适合聚拢注意力并开始推进"):(near?"临近低潮，只完成必要收尾":"适合减少干扰并结束一件事");return `借用旧金山${tide.motion}的节奏：${pace}。${action}`; };
     const getLocalAdvice = () => {
       const actionCard=state.mode==="three"?state.drawn[2]:state.drawn[0],seed=state.analysisSeed||0,visual=state.environmentAnalysis?.suggestions||[];
       const scenePool=advicePools.scene[state.scene],contextPool=[...advicePools.light[state.light],...advicePools.tidy[state.tidy]],intentPool=advicePools.intent[state.intent];
       const sceneAdvice=visual[0]||scenePool[seed%scenePool.length],contextAdvice=visual[1]||contextPool[Math.floor(seed/7)%contextPool.length],intentAdvice=intentPool[Math.floor(seed/19)%intentPool.length];
       const cardAction=brief(readingFor(actionCard).action),first=seed%2?cardAction:intentAdvice;
-      return [first,sceneAdvice,contextAdvice];
+      return [first,sceneAdvice,tidePaceAdvice(contextAdvice)];
     };
     const getAdvice = () => state.modelAdvice||getLocalAdvice();
     const verdict = () => { const first=state.drawn[0]; if(state.mode==="one"){const reading=readingFor(first);return {title:reading.decision,copy:`${first.name}${first.reversed?"逆位":"正位"} · ${reading.keyword}`};} const [present,obstacle,action]=state.drawn.map(readingFor); return {title:`主线 · ${present.keyword}`,copy:`先面对「${obstacle.keyword}」，再做「${action.keyword}」的第一步。`}; };
@@ -416,7 +418,7 @@
       const status=document.querySelector("#aiAdviceStatus"),summary=document.querySelector("#modelSummary"),roles=state.mode==="one"?["你的答案"]:["此刻空间","隐藏阻力","下一步行动"];
       if(!apiBase&&location.hostname.endsWith(".github.io")){if(status)status.textContent="本地建议";state.analysisRequest=null;return;}
       if(status)status.textContent="小模型生成中";
-      const facts={intent:state.intent,scene:state.scene,light:state.light,tidy:state.tidy,brightness:state.environmentAnalysis?.brightness??null,detections:(state.environmentAnalysis?.detections||[]).map(item=>({name:objectNames[item.class]||item.class,confidence:item.score})),cards:state.drawn.map((card,index)=>({role:roles[index],name:card.name,direction:card.reversed?"逆位":"正位",keyword:readingFor(card).keyword})),localSuggestions:getLocalAdvice(),variationId:crypto.randomUUID?.()||String(secureRandom(1000000000))};
+      const facts={intent:state.intent,scene:state.scene,light:state.light,tidy:state.tidy,brightness:state.environmentAnalysis?.brightness??null,detections:(state.environmentAnalysis?.detections||[]).map(item=>({name:objectNames[item.class]||item.class,confidence:item.score})),cards:state.drawn.map((card,index)=>({role:roles[index],name:card.name,direction:card.reversed?"逆位":"正位",keyword:readingFor(card).keyword})),tide:tideFacts(),localSuggestions:getLocalAdvice(),variationId:crypto.randomUUID?.()||String(secureRandom(1000000000))};
       try {
         const response=await fetch(apiUrl("/api/analyze"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(facts),signal:controller.signal});
         if(!response.ok)throw new Error(`模型接口 ${response.status}`);const payload=await response.json();

@@ -21,12 +21,29 @@ class ServerUnitTests(unittest.TestCase):
                 "cards": [{"role": "你的答案", "name": "愚者", "direction": "正位", "keyword": "开始"}],
                 "localSuggestions": ["先清出桌面。"],
                 "variationId": "test-id",
+                "tide": {"station": "任意地点", "motion": "涨潮中", "nextEvent": "高潮", "minutesToNext": 46},
                 "image": "must-not-pass-through",
             }
         )
         self.assertEqual(result["brightness"], 255)
         self.assertEqual(result["detections"], [{"name": "电脑", "confidence": 1.0}])
+        self.assertEqual(
+            result["tide"],
+            {
+                "station": "旧金山",
+                "motion": "涨潮中",
+                "next_event": "高潮",
+                "minutes_to_next": 46,
+                "role": "叙事节奏参考，不代表用户所在地",
+            },
+        )
         self.assertNotIn("image", result)
+
+    def test_invalid_tide_is_not_forwarded(self):
+        result = server.sanitize_payload(
+            {"tide": {"motion": "命运转折", "nextEvent": "高潮", "minutesToNext": -90}}
+        )
+        self.assertIsNone(result["tide"])
 
     def test_model_request_disables_storage_and_uses_strict_schema(self):
         request = server.build_model_request({"scene": "工位"})
