@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import os
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -26,8 +28,22 @@ OPENAI_API_URL = os.environ.get(
 ).strip()
 MAX_BODY_BYTES = 32 * 1024
 REQUEST_TIMEOUT_SECONDS = 25
-RATE_LIMIT_PER_MINUTE = 12
+RATE_LIMIT_PER_MINUTE = max(1, int(os.environ.get("MOONTIDE_RATE_LIMIT", "12")))
+DAILY_REQUEST_LIMIT = max(1, int(os.environ.get("MOONTIDE_DAILY_LIMIT", "500")))
+MAX_MODEL_CONCURRENCY = max(1, int(os.environ.get("MOONTIDE_MODEL_CONCURRENCY", "3")))
+TRUST_PROXY = os.environ.get("MOONTIDE_TRUST_PROXY", "0") == "1"
+ALLOWED_ORIGINS = {
+    item.strip().rstrip("/")
+    for item in os.environ.get(
+        "MOONTIDE_ALLOWED_ORIGINS",
+        "http://127.0.0.1:8000,http://localhost:8000,https://liab-bb.github.io",
+    ).split(",")
+    if item.strip()
+}
 RATE_BUCKETS: dict[str, deque[float]] = defaultdict(deque)
+DAILY_BUCKET: deque[float] = deque()
+RATE_LOCK = threading.Lock()
+MODEL_SEMAPHORE = threading.BoundedSemaphore(MAX_MODEL_CONCURRENCY)
 
 
 ADVICE_PROMPT = """你是「月汐」的空间行动编辑。根据用户设备本地识别后传来的文字事实，写出克制、具体、可立即执行的中文空间建议。
@@ -67,6 +83,41 @@ OUTPUT_SCHEMA = {
 
 def bounded_text(value: Any, limit: int = 80) -> str:
     return str(value or "").strip()[:limit]
+
+
+def is_origin_allowed(origin: str | None) -> bool:
+    return not origin or origin.rstrip("/") in ALLOWED_ORIGINS
+
+
+def client_rate_key(headers: Any, client_host: str) -> str:
+    source = client_host
+    if TRUST_PROXY:
+        candidate = bounded_text(headers.get("CF-Connecting-IP"), 64)
+        try:
+            source = str(ipaddress.ip_address(candidate))
+        except ValueError:
+            source = client_host
+    return hashlib.sha256(source.encode("utf-8")).hexdigest()[:16]
+
+
+def consume_request_capacity(key: str, now: float) -> str | None:
+    with RATE_LOCK:
+        while DAILY_BUCKET and now - DAILY_BUCKET[0] > 86_400:
+            DAILY_BUCKET.popleft()
+        bucket = RATE_BUCKETS[key]
+        while bucket and now - bucket[0] > 60:
+            bucket.popleft()
+        if len(DAILY_BUCKET) >= DAILY_REQUEST_LIMIT:
+            return "daily_budget_reached"
+        if len(bucket) >= RATE_LIMIT_PER_MINUTE:
+            return "rate_limited"
+        bucket.append(now)
+        DAILY_BUCKET.append(now)
+        if len(RATE_BUCKETS) > 4096:
+            stale = [name for name, values in RATE_BUCKETS.items() if not values or now - values[-1] > 60]
+            for name in stale:
+                RATE_BUCKETS.pop(name, None)
+        return None
 
 
 def sanitize_payload(payload: Any) -> dict[str, Any]:
@@ -142,8 +193,8 @@ def extract_output_text(response: dict[str, Any]) -> str:
     raise ValueError("模型响应中没有文本结果")
 
 
-def request_model_advice(facts: dict[str, Any]) -> dict[str, Any]:
-    request_body = {
+def build_model_request(facts: dict[str, Any]) -> dict[str, Any]:
+    return {
         "model": OPENAI_MODEL,
         "store": False,
         "reasoning": {"effort": "none"},
@@ -165,6 +216,10 @@ def request_model_advice(facts: dict[str, Any]) -> dict[str, Any]:
             },
         },
     }
+
+
+def request_model_advice(facts: dict[str, Any]) -> dict[str, Any]:
+    request_body = build_model_request(facts)
     request = urllib.request.Request(
         OPENAI_API_URL,
         data=json.dumps(request_body, ensure_ascii=False).encode("utf-8"),
@@ -203,17 +258,52 @@ class MoonTideHandler(SimpleHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         print(f"[{self.log_date_time_string()}] {self.address_string()} {format % args}")
 
+    def api_path(self) -> str:
+        return self.path.partition("?")[0]
+
+    def request_origin(self) -> str:
+        return bounded_text(self.headers.get("Origin"), 300).rstrip("/")
+
+    def send_cors_headers(self) -> None:
+        origin = self.request_origin()
+        if origin and is_origin_allowed(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+
     def send_json(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
+    def reject_disallowed_origin(self) -> bool:
+        if is_origin_allowed(self.request_origin()):
+            return False
+        self.send_json(HTTPStatus.FORBIDDEN, {"error": "origin_not_allowed"})
+        return True
+
+    def do_OPTIONS(self) -> None:
+        if self.api_path() not in {"/api/health", "/api/analyze"}:
+            self.send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+            return
+        if self.reject_disallowed_origin():
+            return
+        self.send_response(HTTPStatus.NO_CONTENT)
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Max-Age", "600")
+        self.send_header("Cache-Control", "no-store")
+        self.send_cors_headers()
+        self.end_headers()
+
     def do_GET(self) -> None:
-        if self.path == "/api/health":
+        if self.api_path() == "/api/health":
+            if self.reject_disallowed_origin():
+                return
             self.send_json(
                 HTTPStatus.OK,
                 {
@@ -221,14 +311,21 @@ class MoonTideHandler(SimpleHTTPRequestHandler):
                     "aiConfigured": bool(OPENAI_API_KEY),
                     "model": OPENAI_MODEL if OPENAI_API_KEY else None,
                     "privacy": "text-facts-only",
+                    "limits": {
+                        "perMinute": RATE_LIMIT_PER_MINUTE,
+                        "daily": DAILY_REQUEST_LIMIT,
+                        "concurrency": MAX_MODEL_CONCURRENCY,
+                    },
                 },
             )
             return
         super().do_GET()
 
     def do_POST(self) -> None:
-        if self.path != "/api/analyze":
+        if self.api_path() != "/api/analyze":
             self.send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+            return
+        if self.reject_disallowed_origin():
             return
         if not OPENAI_API_KEY:
             self.send_json(
@@ -236,14 +333,15 @@ class MoonTideHandler(SimpleHTTPRequestHandler):
                 {"error": "ai_not_configured", "fallback": "local"},
             )
             return
-        now = time.monotonic()
-        bucket = RATE_BUCKETS[self.client_address[0]]
-        while bucket and now - bucket[0] > 60:
-            bucket.popleft()
-        if len(bucket) >= RATE_LIMIT_PER_MINUTE:
-            self.send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": "rate_limited"})
+        capacity_error = consume_request_capacity(
+            client_rate_key(self.headers, self.client_address[0]), time.monotonic()
+        )
+        if capacity_error:
+            self.send_json(HTTPStatus.TOO_MANY_REQUESTS, {"error": capacity_error})
             return
-        bucket.append(now)
+        if not MODEL_SEMAPHORE.acquire(blocking=False):
+            self.send_json(HTTPStatus.SERVICE_UNAVAILABLE, {"error": "model_busy"})
+            return
         try:
             length = int(self.headers.get("Content-Length", "0"))
             if length <= 0 or length > MAX_BODY_BYTES:
@@ -273,6 +371,8 @@ class MoonTideHandler(SimpleHTTPRequestHandler):
             self.send_json(HTTPStatus.GATEWAY_TIMEOUT, {"error": "model_timeout"})
         except Exception:
             self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": "internal_error"})
+        finally:
+            MODEL_SEMAPHORE.release()
 
 
 def main() -> None:

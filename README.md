@@ -52,6 +52,27 @@ python3 server.py
 
 前端只向 `/api/analyze` 发送检测到的物体名称、置信度、画面亮度、用户选项和牌面文字，不发送照片或视频帧。直接部署到 GitHub Pages 时没有 Python 后端，页面会自动使用本地建议。
 
+## Mac 后端与 GitHub Pages
+
+复制 `.env.example` 为 `.env`，填写服务端 Key 后启动：
+
+```bash
+set -a
+source .env
+set +a
+python3 server.py
+```
+
+公开演示时，建议让服务继续只监听 `127.0.0.1`，再通过有 HTTPS 的可信隧道转发，不要直接开放 Mac 的 8000 端口。获得稳定 HTTPS 后端地址后，只需修改 `config.js` 的公开 `apiBase` 并重新部署 GitHub Pages；API Key 始终只留在 Mac 环境变量中。
+
+后端默认只允许 `https://liab-bb.github.io` 和本机来源，提供每个客户端每分钟 12 次、全局每天 500 次、最多 3 个模型并发的内存保护。通过 Cloudflare Tunnel 时才设置 `MOONTIDE_TRUST_PROXY=1`，让限流读取由可信代理覆盖的 `CF-Connecting-IP`。CORS 不是身份认证；如果进入长期或付费生产环境，应再增加会员鉴权、持久化额度和账单告警。
+
+运行不依赖第三方包的单元测试：
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
 ## 团队分工
 
 - 技术：页面、规则引擎、可视化、部署

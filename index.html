@@ -254,6 +254,7 @@
     <section id="ritualView" class="section ritual hidden" aria-live="polite"></section>
     <section id="resultView" class="section result-card hidden"></section>
   </main>
+  <script src="config.js"></script>
   <script src="tarot-content.js"></script>
   <script>
     const majorCards = [
@@ -264,6 +265,8 @@
     const cards = [...majorCards, ...suits.flatMap(([fileSuit,suit]) => ranks.map((rank,index) => ({id:`${fileSuit}-${index+1}`,name:`${suit}${rank}`,file:`photo/Cards-png/${fileSuit}${String(index+1).padStart(2,"0")}.png`,suit,rank:index+1})) )];
     const tarotContent = window.MOONTIDE_TAROT_CONTENT;
     const state = { mode:"one", intent:"专注", scene:"工位", light:"明亮", tidy:"一般", photoUrl:"", deck:[], drawn:[], pendingCard:null, orientations:[], orbitRotation:0, orbitAnimation:null, suppressOrbitClick:false, resultImageUrl:"", tide:null, cameraStream:null, isScanning:false, visionModel:null, visionModelPromise:null, visionTimer:null, latestDetections:[], environmentAnalysis:null, analysisSeed:0, modelAdvice:null, modelSummary:"", analysisRequest:null };
+    const apiBase=String(window.MOONTIDE_CONFIG?.apiBase||"").trim().replace(/\/+$/,"");
+    const apiUrl = path => `${apiBase}${path}`;
     const setupView = document.querySelector("#setupView"), ritualView = document.querySelector("#ritualView"), resultView = document.querySelector("#resultView");
     const cameraStage=document.querySelector("#cameraStage"), cameraFeed=document.querySelector("#cameraFeed"), cameraStill=document.querySelector("#cameraStill"), detectionLayer=document.querySelector("#detectionLayer"), cameraPlaceholder=document.querySelector("#cameraPlaceholder"), cameraHud=document.querySelector("#cameraHud"), cameraObjectCount=document.querySelector("#cameraObjectCount"), cameraButton=document.querySelector("#cameraButton"), visionStatus=document.querySelector("#visionStatus"), visionSummary=document.querySelector("#visionSummary"), visionTags=document.querySelector("#visionTags"), visionAdvice=document.querySelector("#visionAdvice"), rerollAdviceButton=document.querySelector("#rerollAdviceButton");
     const secureRandom = max => { const limit=Math.floor(0x100000000/max)*max; let value; do { value=crypto.getRandomValues(new Uint32Array(1))[0]; } while(value>=limit); return value%max; };
@@ -411,10 +414,11 @@
     const requestModelAdvice = async () => {
       state.analysisRequest?.abort();const controller=new AbortController();state.analysisRequest=controller;
       const status=document.querySelector("#aiAdviceStatus"),summary=document.querySelector("#modelSummary"),roles=state.mode==="one"?["你的答案"]:["此刻空间","隐藏阻力","下一步行动"];
+      if(!apiBase&&location.hostname.endsWith(".github.io")){if(status)status.textContent="本地建议";state.analysisRequest=null;return;}
       if(status)status.textContent="小模型生成中";
       const facts={intent:state.intent,scene:state.scene,light:state.light,tidy:state.tidy,brightness:state.environmentAnalysis?.brightness??null,detections:(state.environmentAnalysis?.detections||[]).map(item=>({name:objectNames[item.class]||item.class,confidence:item.score})),cards:state.drawn.map((card,index)=>({role:roles[index],name:card.name,direction:card.reversed?"逆位":"正位",keyword:readingFor(card).keyword})),localSuggestions:getLocalAdvice(),variationId:crypto.randomUUID?.()||String(secureRandom(1000000000))};
       try {
-        const response=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(facts),signal:controller.signal});
+        const response=await fetch(apiUrl("/api/analyze"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(facts),signal:controller.signal});
         if(!response.ok)throw new Error(`模型接口 ${response.status}`);const payload=await response.json();
         if(!Array.isArray(payload.actions)||payload.actions.length!==3)throw new Error("模型返回格式错误");
         state.modelAdvice=payload.actions;state.modelSummary=payload.summary||"";updateAdviceList(state.modelAdvice);
