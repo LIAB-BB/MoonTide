@@ -34,7 +34,23 @@
 
 ## 本地运行
 
-摄像头 API 需要安全上下文。线上请使用 HTTPS；本机预览请通过 `localhost` 启动静态服务器，不要直接双击 `index.html` 后期待摄像头可用。
+摄像头 API 需要安全上下文。线上请使用 HTTPS；本机预览通过内置 Python 服务运行，不需要安装第三方依赖：
+
+```bash
+python3 server.py
+```
+
+然后访问 `http://127.0.0.1:8000`。
+
+未设置 API Key 时，视觉识别和本地变化建议仍可完整运行。需要启用小模型建议时，在启动服务前设置服务端环境变量；Key 不会进入网页：
+
+```bash
+export OPENAI_API_KEY="你的服务端 API Key"
+export OPENAI_MODEL="gpt-5.4-mini" # 可选
+python3 server.py
+```
+
+前端只向 `/api/analyze` 发送检测到的物体名称、置信度、画面亮度、用户选项和牌面文字，不发送照片或视频帧。直接部署到 GitHub Pages 时没有 Python 后端，页面会自动使用本地建议。
 
 ## 团队分工
 
