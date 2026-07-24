@@ -4,6 +4,12 @@
 
 月汐是一个把塔罗叙事与可执行空间建议结合起来的黑客松项目。用户扫码进入手机网页、拍摄当前环境、完成洗牌与切牌，并获得 78 张牌正逆位解读和三条可以马上执行的建议。
 
+## 现场扫码
+
+公开体验地址：[https://liab-bb.github.io/MoonTide/](https://liab-bb.github.io/MoonTide/)
+
+![MoonTide QR](photo/moontide-qr.png)
+
 ## 今日验收标准
 
 - 能跑：核心流程稳定完成，并有示例数据兜底。
