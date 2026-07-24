@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#101326" />
+  <meta name="description" content="MoonTide：抽一张牌，看见空间的潮汐。" />
+  <title>MoonTide｜月汐</title>
+  <style>
+    :root { --ink:#eef0ff; --muted:#aeb4d2; --night:#101326; --panel:#1b2040cc; --line:#ffffff1c; --moon:#f6d77a; --tide:#78d7e6; --rose:#e99bc5; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); background:radial-gradient(circle at 76% -12%,#5d4b88 0,transparent 35%),radial-gradient(circle at 5% 42%,#16475b 0,transparent 32%),var(--night); font:16px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.48; background-image:radial-gradient(#fff 1px,transparent 1px),radial-gradient(#fff 1px,transparent 1px); background-size:79px 79px,137px 137px; background-position:17px 29px,62px 88px; }
+    button,input { font:inherit; }
+    button { border:0; color:inherit; cursor:pointer; }
+    button:focus-visible,input:focus-visible { outline:3px solid var(--tide); outline-offset:3px; }
+    .shell { width:min(100%,720px); margin:0 auto; padding:22px 18px 52px; position:relative; }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:28px; }
+    .brand { display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.05em; }
+    .brand-mark { width:35px; height:35px; border-radius:50%; background:radial-gradient(circle at 32% 28%,#fff7c8 0 13%,var(--moon) 14% 53%,#bd8d50 54% 57%,transparent 58%),#2b315d; box-shadow:0 0 24px #f6d77a55; }
+    .moon-chip { color:#fbf1c6; font-size:12px; border:1px solid #f6d77a55; border-radius:999px; padding:6px 10px; background:#161a36aa; }
+    .hero { padding:8px 2px 21px; }
+    h1,h2,h3,p { margin:0; }
+    h1 { font-size:clamp(36px,9vw,58px); line-height:1.05; letter-spacing:-.05em; }
+    .hero p { color:var(--muted); max-width:34rem; margin-top:13px; }
+    .section { padding:20px; border:1px solid var(--line); border-radius:24px; background:linear-gradient(145deg,#23294ebc,#171b35b3); box-shadow:0 20px 60px #02030e40; margin-top:15px; }
+    .section h2 { font-size:16px; letter-spacing:.04em; margin-bottom:13px; }
+    .eyebrow { color:var(--tide); font-size:12px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; margin-bottom:7px; }
+    .choice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .choice { min-height:100px; padding:14px; text-align:left; border:1px solid var(--line); border-radius:16px; background:#11162e8a; transition:.2s transform,.2s border-color,.2s background; }
+    .choice strong { display:block; font-size:16px; }
+    .choice span { display:block; margin-top:4px; color:var(--muted); font-size:12px; line-height:1.4; }
+    .choice.active { border-color:var(--moon); background:linear-gradient(135deg,#5d4d2555,#1b214099); transform:translateY(-2px); }
+    .segmented { display:flex; flex-wrap:wrap; gap:8px; }
+    .segmented button { padding:9px 12px; border-radius:999px; color:var(--muted); background:#0f142b; border:1px solid var(--line); }
+    .segmented button.active { color:#16152a; background:var(--moon); border-color:var(--moon); font-weight:800; }
+    .camera { display:grid; grid-template-columns:98px 1fr; gap:13px; align-items:center; min-height:115px; }
+    .camera-preview { height:112px; width:98px; overflow:hidden; border-radius:14px; border:1px dashed #ffffff4b; background:#0f142b; display:grid; place-items:center; color:var(--muted); font-size:12px; text-align:center; padding:8px; }
+    .camera-preview img { width:100%; height:100%; object-fit:cover; }
+    .camera-copy p { color:var(--muted); font-size:13px; margin:4px 0 10px; }
+    .file-label { display:inline-flex; align-items:center; justify-content:center; min-height:39px; padding:8px 12px; border-radius:10px; background:#2d3865; font-weight:700; font-size:13px; cursor:pointer; }
+    .file-label input { position:absolute; width:1px; height:1px; opacity:0; }
+    .privacy { color:#9da4c3; font-size:11px; margin:12px 2px 0; }
+    .cta { display:flex; align-items:center; justify-content:center; width:100%; min-height:54px; border-radius:16px; margin-top:18px; color:#18152b; font-weight:900; background:linear-gradient(110deg,var(--moon),#f1c3d5); box-shadow:0 10px 28px #e99bc538; }
+    .cta:hover { filter:brightness(1.06); }
+    .hidden { display:none !important; }
+    .ritual { min-height:450px; display:grid; place-items:center; text-align:center; overflow:hidden; }
+    .ritual h2 { font-size:28px; margin-top:12px; }
+    .ritual p { color:var(--muted); max-width:30ch; margin:8px auto 16px; }
+    .deck-scene { height:252px; position:relative; display:grid; place-items:center; width:100%; }
+    .deck { position:relative; width:136px; height:207px; filter:drop-shadow(0 22px 18px #01020ccc); }
+    .card-back { position:absolute; inset:0; border-radius:10px; background:#11142d url("photo/Cards-png/CardBacks.png") center/cover; border:1px solid #ffffff36; transition:transform .45s ease; }
+    .card-back:nth-child(1) { transform:rotate(-8deg) translate(-8px,3px); } .card-back:nth-child(2) { transform:rotate(7deg) translate(7px,-1px); } .card-back:nth-child(3) { transform:rotate(-2deg); }
+    .shuffling .card-back:nth-child(1) { animation:scatter-a 1s ease-in-out infinite; } .shuffling .card-back:nth-child(2) { animation:scatter-b 1s ease-in-out infinite; } .shuffling .card-back:nth-child(3) { animation:scatter-c 1s ease-in-out infinite; }
+    @keyframes scatter-a { 50% { transform:rotate(-30deg) translate(-68px,-8px); } } @keyframes scatter-b { 50% { transform:rotate(29deg) translate(65px,8px); } } @keyframes scatter-c { 50% { transform:rotate(12deg) translate(4px,-32px); } }
+    .cut-scene { display:flex; justify-content:center; gap:42px; align-items:flex-end; height:250px; }
+    .cut-scene .deck { transform:scale(.82); } .cut-scene .deck:last-child { transform:scale(.64) translateY(-18px); }
+    .draw-slots { display:flex; justify-content:center; gap:18px; align-items:end; height:256px; }
+    .draw-slot { width:118px; height:186px; border-radius:10px; border:1px dashed #ffffff60; background:#0e1330a8; display:grid; place-items:center; color:#aeb4d2; font-size:12px; padding:8px; }
+    .draw-slot.one { width:136px; height:207px; background:#11142d url("photo/Cards-png/CardBacks.png") center/cover; border-style:solid; cursor:pointer; color:transparent; box-shadow:0 18px 25px #01020caa; }
+    .draw-slot.one:hover { transform:translateY(-8px); }
+    .action-row { display:flex; justify-content:center; flex-wrap:wrap; gap:10px; }
+    .secondary { min-height:44px; padding:10px 15px; background:#2a3159; border:1px solid #ffffff28; border-radius:12px; font-weight:800; }
+    .result-card { overflow:hidden; padding:0; }
+    .result-photo { height:158px; position:relative; background:radial-gradient(circle at 70% 20%,#8dc6e5,#354a81 47%,#171c38); }
+    .result-photo img { width:100%; height:100%; object-fit:cover; opacity:.5; } .result-photo::after { content:""; position:absolute; inset:0; background:linear-gradient(0deg,#171b35,transparent 75%); }
+    .result-content { padding:0 20px 21px; margin-top:-43px; position:relative; }
+    .badge { display:inline-block; padding:6px 9px; border:1px solid #f6d77a80; border-radius:999px; background:#222646e8; color:#fdf0bf; font-size:12px; font-weight:800; }
+    .drawn-cards { display:grid; gap:14px; margin:16px 0; } .drawn-cards.three { grid-template-columns:repeat(3,1fr); gap:8px; }
+    .drawn-card { text-align:center; } .drawn-card img { width:100%; max-width:165px; border-radius:9px; box-shadow:0 15px 20px #02030eb3; } .drawn-cards.three .drawn-card img { max-width:100px; }
+    .reversed { transform:rotate(180deg); } .card-role { display:block; color:var(--tide); font-size:11px; font-weight:800; margin:9px 0 2px; } .card-name { font-weight:800; font-size:13px; } .card-direction { display:block; color:var(--muted); font-size:11px; }
+    .verdict { padding:14px; border-left:3px solid var(--moon); border-radius:0 12px 12px 0; background:#0f1430bd; margin:14px 0; }
+    .verdict strong { color:#fdf0bf; display:block; font-size:19px; } .verdict p { color:var(--muted); font-size:13px; margin-top:4px; }
+    .advice-list { list-style:none; padding:0; margin:13px 0 20px; display:grid; gap:9px; }
+    .advice-list li { display:flex; gap:10px; color:#dfe2f5; font-size:14px; } .advice-list li::before { content:"✦"; color:var(--tide); }
+    .tiny { color:var(--muted); font-size:11px; text-align:center; margin-top:16px; }
+    @media (max-width:420px) { .shell { padding:18px 14px 42px; } .section { padding:16px; border-radius:20px; } .choice-grid { gap:8px; } .choice { min-height:92px; padding:12px; } .draw-slots { gap:8px; } .draw-slot { width:96px; height:158px; } .drawn-cards.three .drawn-card img { max-width:88px; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top"><div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>MOONTIDE</span></div><span id="moonChip" class="moon-chip">正在读取月相</span></header>
+    <section id="setupView">
+      <div class="hero"><p class="eyebrow">读一读你此刻的空间</p><h1>抽一张牌，<br>看见空间的潮汐。</h1><p>照片只留在你的手机里。月汐用抽牌与空间感受，为你提供一份可执行的当下建议。</p></div>
+      <div class="section"><h2>选择这一次的问法</h2><div class="choice-grid" id="modeChoices"><button class="choice active" data-mode="one"><strong>单张 · Yes / No</strong><span>为心里的问题抽一张直觉答案。</span></button><button class="choice" data-mode="three"><strong>三张 · 空间潮汐</strong><span>此刻空间、隐藏阻力、下一步行动。</span></button></div></div>
+      <div class="section"><h2>拍下你此刻的环境</h2><div class="camera"><div class="camera-preview" id="cameraPreview">照片只在<br>此设备中使用</div><div class="camera-copy"><strong>给月汐一点空间线索</strong><p>可以拍工位、卧室或你正在停留的地方。</p><label class="file-label">拍照或选择照片<input id="photoInput" type="file" accept="image/*" capture="environment" /></label></div></div><p class="privacy">不上传 · 不保存 · 不需要登录。照片只用于本次结果卡背景。</p></div>
+      <div class="section"><h2>确认你的空间感受</h2><p class="eyebrow">场景</p><div class="segmented" data-group="scene"><button class="active" data-value="工位">工位</button><button data-value="卧室">卧室</button><button data-value="客厅">客厅</button><button data-value="公共空间">公共空间</button></div><p class="eyebrow" style="margin-top:16px">光感</p><div class="segmented" data-group="light"><button class="active" data-value="明亮">明亮</button><button data-value="昏暗">昏暗</button><button data-value="人工光">人工光为主</button></div><p class="eyebrow" style="margin-top:16px">状态</p><div class="segmented" data-group="tidy"><button class="active" data-value="一般">一般</button><button data-value="整洁">整洁</button><button data-value="杂乱">杂乱</button></div></div>
+      <button id="beginButton" class="cta">开始这一场月汐</button>
+    </section>
+    <section id="ritualView" class="section ritual hidden" aria-live="polite"></section>
+    <section id="resultView" class="section result-card hidden"></section>
+  </main>
+  <script>
+    const majorCards = [
+      ["00-TheFool.png","愚者"],["01-TheMagician.png","魔术师"],["02-TheHighPriestess.png","女祭司"],["03-TheEmpress.png","皇后"],["04-TheEmperor.png","皇帝"],["05-TheHierophant.png","教皇"],["06-TheLovers.png","恋人"],["07-TheChariot.png","战车"],["08-Strength.png","力量"],["09-TheHermit.png","隐者"],["10-WheelOfFortune.png","命运之轮"],["11-Justice.png","正义"],["12-TheHangedMan.png","倒吊人"],["13-Death.png","死神"],["14-Temperance.png","节制"],["15-TheDevil.png","恶魔"],["16-TheTower.png","高塔"],["17-TheStar.png","星星"],["18-TheMoon.png","月亮"],["19-TheSun.png","太阳"],["20-Judgement.png","审判"],["21-TheWorld.png","世界"]
+    ].map(([file,name],index)=>({id:`major-${index}`,name,file:`photo/Cards-png/${file}`,suit:"大阿尔卡那",rank:index}));
+    const ranks = ["王牌","二","三","四","五","六","七","八","九","十","侍从","骑士","王后","国王"];
+    const suits = [["Cups","圣杯"],["Wands","权杖"],["Swords","宝剑"],["Pentacles","星币"]];
+    const cards = [...majorCards, ...suits.flatMap(([fileSuit,suit]) => ranks.map((rank,index) => ({id:`${fileSuit}-${index+1}`,name:`${suit}${rank}`,file:`photo/Cards-png/${fileSuit}${String(index+1).padStart(2,"0")}.png`,suit,rank:index+1})) )];
+    const state = { mode:"one", scene:"工位", light:"明亮", tidy:"一般", photoUrl:"", deck:[], drawn:[] };
+    const setupView = document.querySelector("#setupView"), ritualView = document.querySelector("#ritualView"), resultView = document.querySelector("#resultView");
+    const random = max => crypto.getRandomValues(new Uint32Array(1))[0] % max;
+    const shuffle = source => { const copy=[...source]; for(let i=copy.length-1;i>0;i--){const j=random(i+1); [copy[i],copy[j]]=[copy[j],copy[i]];} return copy; };
+    const moonInfo = () => { const cycle=29.53058867, knownNew=Date.UTC(2000,0,6,18,14), now=Date.now(); let age=((now-knownNew)/86400000)%cycle; if(age<0)age+=cycle; const fraction=age/cycle, names=["新月","娥眉月","上弦月","盈凸月","满月","亏凸月","下弦月","残月"]; const index=Math.round(48+34*Math.sin(fraction*Math.PI*2-.9)+12*Math.sin(fraction*Math.PI*4)); return {name:names[Math.round(fraction*8)%8], index:Math.max(0,Math.min(100,index)), illumination:Math.round((1-Math.cos(fraction*Math.PI*2))*50)}; };
+    const moon = moonInfo(); document.querySelector("#moonChip").textContent=`${moon.name} · 月汐 ${moon.index}`;
+    document.querySelectorAll("#modeChoices button").forEach(button=>button.addEventListener("click",()=>{document.querySelectorAll("#modeChoices button").forEach(b=>b.classList.remove("active"));button.classList.add("active");state.mode=button.dataset.mode;}));
+    document.querySelectorAll("[data-group]").forEach(group=>group.querySelectorAll("button").forEach(button=>button.addEventListener("click",()=>{group.querySelectorAll("button").forEach(b=>b.classList.remove("active"));button.classList.add("active");state[group.dataset.group]=button.dataset.value;})));
+    document.querySelector("#photoInput").addEventListener("change",event=>{const file=event.target.files?.[0];if(!file)return;if(state.photoUrl)URL.revokeObjectURL(state.photoUrl);state.photoUrl=URL.createObjectURL(file);document.querySelector("#cameraPreview").innerHTML=`<img alt="你的环境照片预览" src="${state.photoUrl}">`;});
+    const renderRitual = (step) => {
+      setupView.classList.add("hidden"); resultView.classList.add("hidden"); ritualView.classList.remove("hidden");
+      if(step==="shuffle") ritualView.innerHTML=`<div><div class="deck-scene"><div class="deck shuffling"><span class="card-back"></span><span class="card-back"></span><span class="card-back"></span></div></div><p class="eyebrow">让问题安静下来</p><h2>洗牌中</h2><p>闭上眼，想象你希望空间带给你的感受。</p><button class="cta" id="toCut">我准备好了</button></div>`;
+      if(step==="cut") ritualView.innerHTML=`<div><div class="cut-scene"><div class="deck"><span class="card-back"></span><span class="card-back"></span><span class="card-back"></span></div><div class="deck"><span class="card-back"></span><span class="card-back"></span><span class="card-back"></span></div></div><p class="eyebrow">跟随第一直觉</p><h2>切一切牌</h2><p>点击切牌，让此刻的潮汐决定抽取顺序。</p><button class="cta" id="toDraw">完成切牌</button></div>`;
+      if(step==="draw") { const labels=state.mode==="one"?["点击抽牌"]:["此刻空间","隐藏阻力","下一步行动"]; ritualView.innerHTML=`<div><div class="draw-slots">${labels.map((label,index)=>`<button class="draw-slot ${state.mode==="one"?"one":""}" data-draw="${index}">${label}</button>`).join("")}</div><p class="eyebrow">月汐已就位</p><h2>${state.mode==="one"?"抽出你的答案":"依序翻开三张牌"}</h2><p>每张牌的正逆位，都会改变它给你的提醒。</p></div>`; document.querySelectorAll("[data-draw]").forEach(button=>button.addEventListener("click",drawCards)); }
+      document.querySelector("#toCut")?.addEventListener("click",()=>renderRitual("cut")); document.querySelector("#toDraw")?.addEventListener("click",()=>renderRitual("draw"));
+    };
+    const begin = () => { state.deck=shuffle(cards); state.drawn=[]; renderRitual("shuffle"); };
+    const drawCards = () => { const count=state.mode==="one"?1:3; state.drawn=state.deck.slice(0,count).map(card=>({...card,reversed:random(2)===1})); renderResult(); };
+    const cardTheme = card => { const source=`${card.name}${card.suit}${card.rank}`; const themes=["留白与开始","主动整理","安静观察","温柔滋养","建立边界","回到仪式","重新连接","清晰动线","稳定节奏","独处聚焦","允许变化","做出取舍","换一个角度","清理与重启","调和与流动","松开过度占有","移除阻塞","保持希望","照见模糊感受","引入光与活力","完成一次复盘","让空间回到完整"]; let total=0;for(const char of source)total+=char.charCodeAt(0);return themes[total%themes.length]; };
+    const getAdvice = () => { const scene={"工位":"把桌面上最常用的一件工具留在触手可及的位置，其余先收进视线之外。","卧室":"让睡眠区只承担休息功能，先移走一件会让你继续工作的物品。","客厅":"在座位附近留出一个可停留的空位，让人进入空间后有明确落点。","公共空间":"先找到自己可以短暂停留的一平方米，并让它保持轻松可呼吸。"}[state.scene]; const light={"明亮":"保留最舒服的一束自然光，把它当作今天的视觉焦点。","昏暗":"补一盏局部暖光，而不是只依赖顶灯；先照亮你真正要做的事。","人工光":"把最刺眼的光源移出直视范围，给眼睛留一点柔和的过渡。"}[state.light]; const tidy={"整洁":"不要为了追求更整齐而塞满收纳；留一处空白，让它提醒你停下来。","一般":"现在只处理一个平面：桌面、床边或入口，完成后就停止。","杂乱":"先清理入口或行动路径上的三样东西，不做全屋大扫除。"}[state.tidy]; return [scene,light,tidy]; };
+    const verdict = () => { const card=state.drawn[0]; if(state.mode!=="one") return {title:`${cardTheme(card)}，是这次月汐的主线`,copy:`${card.name}${card.reversed?"逆位":"正位"}提醒你：先看见当下的空间状态，再决定下一步。`}; const score=(card.rank+(card.reversed?3:0)+moon.index)%9; const answer=score<=2?"先不要":score<=5?"时机未明":"可以尝试"; return {title:answer,copy:`${card.name}${card.reversed?"逆位":"正位"}给出的不是命令，而是一条当下更值得相信的行动方向。`}; };
+    const renderResult = () => { ritualView.classList.add("hidden"); resultView.classList.remove("hidden"); const v=verdict(), roles=state.mode==="one"?["你的答案"]:["此刻空间","隐藏阻力","下一步行动"], advice=getAdvice(); resultView.innerHTML=`<div class="result-photo">${state.photoUrl?`<img src="${state.photoUrl}" alt="本次环境照片">`:""}</div><div class="result-content"><span class="badge">${moon.name} · 月汐指数 ${moon.index}</span><h2 style="font-size:28px;margin-top:12px">你的空间正在对你说</h2><div class="drawn-cards ${state.mode}">${state.drawn.map((card,index)=>`<article class="drawn-card"><img class="${card.reversed?"reversed":""}" src="${card.file}" alt="${card.name}${card.reversed?"逆位":"正位"}"><span class="card-role">${roles[index]}</span><span class="card-name">${card.name}</span><span class="card-direction">${card.reversed?"逆位":"正位"} · ${cardTheme(card)}</span></article>`).join("")}</div><div class="verdict"><strong>${v.title}</strong><p>${v.copy}</p></div><h3>给 ${state.scene} 的三条行动建议</h3><ul class="advice-list">${advice.map(item=>`<li>${item}</li>`).join("")}</ul><div class="action-row"><button class="secondary" id="shareButton">分享这次月汐</button><button class="secondary" id="againButton">再读一次</button></div><p class="tiny">照片未上传、未保存。月汐结果用于娱乐与空间灵感，不构成健康、财务或命运判断。</p></div>`; document.querySelector("#againButton").addEventListener("click",()=>{resultView.classList.add("hidden");setupView.classList.remove("hidden");window.scrollTo({top:0,behavior:"smooth"});}); document.querySelector("#shareButton").addEventListener("click",shareResult); };
+    const shareResult = async () => { const card=state.drawn[0]; const text=`我在 MoonTide 抽到了${card.name}${card.reversed?"（逆位）":""}。${verdict().title}｜月汐指数 ${moon.index}`; try { if(navigator.share) await navigator.share({title:"MoonTide 月汐",text,url:location.href}); else {await navigator.clipboard.writeText(text); alert("月汐结果已复制，可以分享给朋友。");} } catch (_) {} };
+    document.querySelector("#beginButton").addEventListener("click",begin);
+  </script>
+</body>
+</html>
