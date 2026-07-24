@@ -59,12 +59,12 @@
     .cut-scene { display:flex; justify-content:center; gap:42px; align-items:flex-end; height:250px; }
     .cut-scene .deck { transform:scale(.82); } .cut-scene .deck:last-child { transform:scale(.64) translateY(-18px); }
     .deck-ring-scene { width:min(100%,360px); aspect-ratio:1; margin:0 auto 8px; position:relative; }
-    .deck-ring { position:absolute; inset:0; transform:rotate(var(--ring-rotation,0deg)); transition:transform .65s cubic-bezier(.2,.75,.2,1); }
+    .deck-ring { position:absolute; inset:0; z-index:0; transform:rotate(var(--ring-rotation,0deg)); transition:transform .65s cubic-bezier(.2,.75,.2,1); }
     .ring-card { position:absolute; left:50%; top:50%; width:var(--size); aspect-ratio:300/527; padding:0; border:1px solid #f6d77a70; border-radius:4px; background:#11142d url("photo/Cards-png/卡背.png") center/100% 100% no-repeat; box-shadow:0 4px 8px #01020c88; transform:translate(-50%,-50%) rotate(var(--angle)) translateY(var(--offset)) rotate(var(--counter)); transition:filter .2s,opacity .25s; }
     .ring-card:hover,.ring-card:focus-visible { filter:brightness(1.25); z-index:5; }
     .ring-card.selected { opacity:.08; pointer-events:none; }
-    .ring-center { position:absolute; inset:50% auto auto 50%; width:76px; aspect-ratio:1; transform:translate(-50%,-50%); display:grid; place-items:center; border:1px solid #f6d77a77; border-radius:50%; background:#101630dd; color:#fdf0bf; font-size:11px; font-weight:800; text-align:center; padding:10px; pointer-events:none; }
-    .ring-controls { display:flex; justify-content:center; gap:8px; margin:4px 0 12px; }
+    .ring-center { position:absolute; z-index:1; inset:50% auto auto 50%; width:76px; aspect-ratio:1; transform:translate(-50%,-50%); display:grid; place-items:center; border:1px solid #f6d77a77; border-radius:50%; background:#101630dd; color:#fdf0bf; font-size:11px; font-weight:800; text-align:center; padding:10px; pointer-events:none; }
+    .ring-controls { position:relative; z-index:2; display:flex; justify-content:center; gap:8px; margin:4px 0 12px; }
     .ring-control { min-height:38px; padding:7px 12px; border-radius:999px; border:1px solid #ffffff28; background:#252c54; color:#eef0ff; font-size:12px; font-weight:800; }
     .ring-reveal { min-height:104px; max-width:440px; margin:12px auto 0; padding:12px; display:grid; grid-template-columns:60px 1fr; gap:11px; align-items:center; border:1px solid #ffffff22; border-radius:14px; background:#0f1430a8; text-align:left; }
     .ring-reveal img { width:60px; aspect-ratio:300/527; object-fit:fill; border-radius:5px; box-shadow:0 8px 14px #02030eb3; }
